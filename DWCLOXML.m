@@ -1,0 +1,64 @@
+DWCLOXML ;CLD/JOLLIS - Output file as XML;8:58 PM 19 Sep 2011
+ ;;0.1;FileMan Web Tools;;19 Sep 2011
+
+FILEXML(FILENUM,OUTPUT)
+ O OUTPUT
+ U OUTPUT
+ W "<?xml version=""1.0""?>",!
+ D FILE^DWCLWALK(FILENUM,"XMLFILE^DWCLOXML","XMLEOF^DWCLOXML","XMLFIELD^DWCLOXML","XMLFLEOF^DWCLOXML")
+ U $P
+ Q
+
+XMLFILE(FILENUM)
+ W "<file number=""",FILENUM,""">",!
+ W "<name>",$$FILENAME^DWDIQ(FILENUM),"</name>",!
+ I $$ISSUB^DWDIQ(FILENUM)'=1 D
+ .W "<closedroot>",$$ROOT^DWDIQ(FILENUM),"</closedroot>",!
+ I $$ISSUB^DWDIQ(FILENUM)=0 D
+ .W $$TAG^DWCLXML("ien-count",$$ENTRIES^DWDIQ(FILENUM)),!
+ .W $$TAG^DWCLXML("last-assigned-ien",$$MOSTRCNT^DWDIQ(FILENUM)),!
+ I $$ISSUB^DWDIQ(FILENUM)=0 S SUB="no" 
+ I $$ISSUB^DWDIQ(FILENUM)=1 S SUB="yes"
+ W $$TAG^DWCLXML("is-subfile",SUB),!
+ Q
+
+XMLEOF(FILENUM)
+ W "</file>",!
+ Q
+
+XMLFIELD(FILENUM,FLDNUM)
+ W "<field number=""",FLDNUM,""">",!
+ W $$TAG^DWCLXML("name",$$FLDNAME^DWDIQ(FILENUM,FLDNUM)),!
+ W $$TAG^DWCLXML("datatype",$$DATATYPE^DWDIQ(FILENUM,FLDNUM)),!
+ I $$ISSUB^DWDIQ(FILENUM)=1 D
+ .N VERIFY,ASK,TMP S VERIFY="Yes",ASK="No",TMP=$$FLDTYPE^DWDIQ(FILENUM,FLDNUM)
+ .I TMP["A" S VERIFY="No" E  S VERIFY="Yes"
+ .I TMP["M" S ASK="Yes" E  S ASK="No"
+ .W $$TAG^DWCLXML("verify-new-subentry",VERIFY),!
+ .W $$TAG^DWCLXML("ask-for-another",ASK),!
+ W $$TAG^DWCLXML("audit",$$FLDAUDIT^DWDIQ(FILENUM,FLDNUM)),!
+ W $$TAG^DWCLXML("required",$$FLDREQD^DWDIQ(FILENUM,FLDNUM)),!
+ W $$TAG^DWCLXML("immutable",$$IMUTABLE^DWDIQ(FILENUM,FLDNUM)),!
+ W $$TAG^DWCLXML("print-length",$$PRTLEN^DWDIQ(FILENUM,FLDNUM)),!
+ W $$TAG^DWCLXML("help-message",$$HELPMSG^DWDIQ(FILENUM,FLDNUM)),!
+ W "<security>",!
+ N SEC D FLDSEC^DWDIQ(FILENUM,FLDNUM,.SEC)
+ W $$TAG^DWCLXML("read",SEC("READ")),!
+ W $$TAG^DWCLXML("write",SEC("WRITE")),!
+ W $$TAG^DWCLXML("delete",SEC("DELETE")),!
+ W "</security>",!
+ I $$DATATYPE^DWDIQ(FILENUM,FLDNUM)="Set of Codes" D
+ .N SOC,CNT,I,CURKEY S CNT=$$CODES^DWDIQ(FILENUM,FLDNUM,.SOC),CURKEY=""
+ .W "<codes>",!
+ .F I=0:1 S CURKEY=$O(SOC(CURKEY)) Q:CURKEY=""  D
+ ..W "<code description=""",$$ESCAPE^DWCLXML(SOC(CURKEY)),""">",$$ESCAPE^DWCLXML(CURKEY),"</code>",!
+ .W "</codes>",!
+ I $$DATATYPE^DWDIQ(FILENUM,FLDNUM)="Pointer" D
+ .N LG,PFN S PFN=$$POINTER^DWDIQ(FILENUM,FLDNUM,.LG)
+ .W $$TAG^DWCLXML("points-to",PFN),!
+ .W $$TAG^DWCLXML("laygo-allowed",LG),!
+ Q
+
+XMLFLEOF(FILENUM,FLDNUM)
+ W "</field>",!
+ Q
