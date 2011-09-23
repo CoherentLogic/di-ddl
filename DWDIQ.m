@@ -262,7 +262,7 @@ HELPMSG(FILENUM,FLDNUM)
 PRTLEN(FILENUM,FLDNUM)
  N RAW S RAW=$$FLDTYPE(FILENUM,FLDNUM)
  N PLEN S PLEN="Undefined"
- I RAW["J" S PLEN=$P(RAW,"J",2)+0
+ I RAW["J" S PLEN=+$P(RAW,"J",2)
  Q PLEN
 
 ;
@@ -271,19 +271,18 @@ PRTLEN(FILENUM,FLDNUM)
 ; passed by reference.
 ;
 FLDSEC(FILENUM,FLDNUM,TARGET)
- N RA,DA,WA S RA="Undefined" S DA="Undefined" S WA="Undefined"
- S RA=$G(^DD(FILENUM,FLDNUM,8))
- S DA=$G(^DD(FILENUM,FLDNUM,8.5))
- S WA=$G(^DD(FILENUM,FLDNUM,9))
- S TARGET("READ")=RA
- S TARGET("DELETE")=DA
- S TARGET("WRITE")=WA
+ S TARGET("READ")=$G(^DD(FILENUM,FLDNUM,8),"Undefined")
+ S TARGET("DELETE")=$G(^DD(FILENUM,FLDNUM,8.5),"Undefined")
+ S TARGET("WRITE")=$G(^DD(FILENUM,FLDNUM,9),"Undefined")
  Q
 
 ;
 ; CODES returns an array (TARGET) of key-value pairs for the set of codes
 ; defined by FLDNUM in FILENUM. CODES itself returns the number of 
 ; key-value pairs.
+;
+; TARGET layout:
+;  TARGET(KEY)=VALUE
 ;
 CODES(FILENUM,FLDNUM,TARGET)
  N CS S CS=$P($G(^DD(FILENUM,FLDNUM,0)),"^",3)
@@ -296,3 +295,33 @@ CODES(FILENUM,FLDNUM,TARGET)
  .S TARGET(KEY)=VAL
  Q CNT
  
+
+;
+; XREFS populates the array TARGET with information about the
+; cross-references defined for FILENUM.
+; 
+; XREFS returns nothing.
+;
+; TARGET format:
+;  TARGET(file-number,field-number,cross-reference-name)=""
+;
+XREFS(FILENUM,TARGET)
+ N XRNAME,XRFILE,XRFIELD S (XRNAME,XRFILE,XRFIELD)=""
+ F  S XRNAME=$O(^DD(FILENUM,0,"IX",XRNAME)) Q:XRNAME=""  D
+ .F  S XRFILE=$O(^DD(FILENUM,0,"IX",XRNAME,XRFILE)) Q:XRFILE=""  D
+ ..F  S XRFIELD=$O(^DD(FILENUM,0,"IX",XRNAME,XRFILE,XRFIELD)) Q:XRFIELD=""  D
+ ...S TARGET(XRFILE,XRFIELD,XRNAME)=""
+ Q
+
+;
+; FLDXREFS populates TARGET as a sequentially-indexed 
+; array of cross-reference names defined for FILENUM,FLDNUM.
+;
+; Returns the total number of cross-references.
+;
+FLDXREFS(FILENUM,FLDNUM,TARGET)
+ N XRS S XRS="" D XREFS^DWDIQ(FILENUM,.XRS)
+ N CNT,IDX S (CNT,IDX)=0
+ F CNT=1:1 S IDX=$O(XRS(FILENUM,FLDNUM,IDX)) Q:IDX=""  D
+ .S TARGET(CNT)=IDX
+ Q CNT-1
